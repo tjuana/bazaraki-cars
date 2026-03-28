@@ -1,0 +1,13 @@
+{
+  "budget": { "min": 5000, "max": 15000 },
+  "brands": ["toyota", "honda", "mazda", "nissan", "mitsubishi"],
+  "districts": [],
+  "maxMileage": 180000,
+  "minYear": 2014,
+  "maxYear": null,
+  "fuelTypes": ["petrol", "hybrid"],
+  "excludeDealers": false,
+  "scrapeMaxPages": 5,
+  "scrapeDelayMs": { "min": 3000, "max": 8000 },
+  "whatsappRateLimit": { "maxPerHour": 8 }
+}
