@@ -1,4 +1,4 @@
-import { getClient } from './client.js';
+import { getClient, DEFAULT_MODEL } from './client.js';
 import { ANALYST_SYSTEM } from './prompts.js';
 import type { AnalysisToolOutput } from './tools.js';
 import type { Listing } from '../types/index.js';
@@ -28,7 +28,7 @@ const RESPONSE_SCHEMA = {
 
 export async function analyzeListing(listing: Listing): Promise<AnalysisToolOutput> {
   const model = getClient().getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: DEFAULT_MODEL,
     generationConfig: {
       responseMimeType: 'application/json',
       responseSchema: RESPONSE_SCHEMA as never,

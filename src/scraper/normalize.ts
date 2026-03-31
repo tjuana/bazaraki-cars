@@ -70,20 +70,23 @@ function extractYear(params: Record<string, string>, title: string): number | nu
 }
 
 function extractEngineSize(params: Record<string, string>): number | null {
-  for (const key of ['engine', 'engine size', 'cc', 'displacement']) {
+  for (const key of ['engine size', 'engine', 'cc', 'displacement']) {
     const val = params[key];
     if (!val) continue;
-    // Handle "1600cc" or "1.6L" or "1600"
+    // Handle "1600cc" or "1.6L" or "1,5L" or "1600"
     const ccMatch = val.match(/(\d{3,4})\s*cc/i);
     if (ccMatch) return Math.round(parseInt(ccMatch[1]) / 100) / 10;
-    const lMatch = val.match(/(\d+\.\d+)\s*[lL]/);
-    if (lMatch) return parseFloat(lMatch[1]);
+    const lMatch = val.match(/(\d+[.,]\d+)\s*[lL]/);
+    if (lMatch) return parseFloat(lMatch[1].replace(',', '.'));
+    // Bare "1,5L" or "1.5L" without space
+    const bareMatch = val.match(/(\d+[.,]\d+)/);
+    if (bareMatch) return parseFloat(bareMatch[1].replace(',', '.'));
   }
   return null;
 }
 
 function extractFuelType(params: Record<string, string>): string | null {
-  for (const key of ['fuel', 'fuel type', 'καύσιμο']) {
+  for (const key of ['fuel type', 'fuel', 'καύσιμο']) {
     const val = params[key]?.toLowerCase();
     if (!val) continue;
     if (val.includes('petrol') || val.includes('gasoline') || val.includes('βενζίν')) return 'petrol';
@@ -103,6 +106,7 @@ export function normalizeListing(
   const priceText = detail.priceText || card.priceText;
 
   const mileageText =
+    detail.params['mileage (in km)'] ??
     detail.params['mileage'] ??
     detail.params['kilometres'] ??
     detail.params['km'] ??
@@ -122,8 +126,8 @@ export function normalizeListing(
     mileage: parseMileage(mileageText),
     engineSize: extractEngineSize(detail.params),
     fuelType: extractFuelType(detail.params),
-    transmission: detail.params['transmission']?.toLowerCase() ?? null,
-    bodyType: detail.params['body type']?.toLowerCase() ?? null,
+    transmission: (detail.params['gearbox'] ?? detail.params['transmission'])?.toLowerCase() ?? null,
+    bodyType: (detail.params['body type'] ?? detail.params['bodytype'])?.toLowerCase() ?? null,
     color: detail.params['colour'] ?? detail.params['color'] ?? null,
     brand: extractBrand(title),
     model: null,  // TODO: more sophisticated model extraction

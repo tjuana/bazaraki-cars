@@ -1,4 +1,4 @@
-import { getClient } from './client.js';
+import { getClient, DEFAULT_MODEL } from './client.js';
 import { NEGOTIATOR_SYSTEM } from './prompts.js';
 import type { Listing, Conversation } from '../types/index.js';
 import type { AnalysisToolOutput } from './tools.js';
@@ -10,7 +10,7 @@ export async function generateFollowUp(
   sellerReply: string
 ): Promise<string> {
   const model = getClient().getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: DEFAULT_MODEL,
     systemInstruction: NEGOTIATOR_SYSTEM,
   });
 

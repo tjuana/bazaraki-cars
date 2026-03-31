@@ -1,13 +1,15 @@
 {
-  "budget": { "min": 5000, "max": 15000 },
-  "brands": ["toyota", "honda", "mazda", "nissan", "mitsubishi"],
+  "budget": { "min": 9000, "max": 14000 },
+  "brands": ["toyota"],
+  "models": ["yaris"],
   "districts": [],
-  "maxMileage": 180000,
-  "minYear": 2014,
+  "maxMileage": 80000,
+  "minYear": 2022,
   "maxYear": null,
   "fuelTypes": ["petrol", "hybrid"],
+  "transmission": "automatic",
   "excludeDealers": false,
-  "scrapeMaxPages": 5,
+  "scrapeMaxPages": 20,
   "scrapeDelayMs": { "min": 3000, "max": 8000 },
   "whatsappRateLimit": { "maxPerHour": 8 }
 }

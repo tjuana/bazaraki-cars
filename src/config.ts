@@ -11,11 +11,13 @@ const ENV_PATH = join(__dirname, '../.env');
 const ConfigSchema = z.object({
   budget: z.object({ min: z.number(), max: z.number() }),
   brands: z.array(z.string()),
+  models: z.array(z.string()).default([]),
   districts: z.array(z.string()),
   maxMileage: z.number(),
   minYear: z.number().nullable(),
   maxYear: z.number().nullable(),
   fuelTypes: z.array(z.string()),
+  transmission: z.string().nullable().default(null),
   excludeDealers: z.boolean().default(false),
   scrapeMaxPages: z.number().default(5),
   scrapeDelayMs: z.object({ min: z.number(), max: z.number() }),

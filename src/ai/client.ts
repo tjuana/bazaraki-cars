@@ -13,7 +13,9 @@ export function getClient(): GoogleGenerativeAI {
   return _genai;
 }
 
-/** Для анализа — flash достаточно и бесплатно */
+/** Модель по умолчанию — 2.0-flash: 1500 req/day бесплатно (vs 20/day у 2.5-flash) */
+export const DEFAULT_MODEL = 'gemini-2.0-flash';
+
 export function getFlashModel() {
-  return getClient().getGenerativeModel({ model: 'gemini-2.5-flash' });
+  return getClient().getGenerativeModel({ model: DEFAULT_MODEL });
 }

@@ -116,11 +116,28 @@ export async function analyzeAllCommand() {
 
   log.info(`Found ${rows.length} un-analyzed listings`);
 
+  let done = 0;
   for (const row of rows) {
     try {
       await analyzeCommand(String(row.id));
+      done++;
+      log.dim(`  [${done}/${rows.length}] Пауза 5s (rate limit)...`);
+      await new Promise((r) => setTimeout(r, 5000));
     } catch (err) {
-      log.error(`Failed to analyze #${row.id}: ${(err as Error).message}`);
+      const msg = (err as Error).message;
+      if (msg.includes('429') || msg.includes('quota')) {
+        log.warn(`  Rate limit — жду 60s...`);
+        await new Promise((r) => setTimeout(r, 60000));
+        // Retry
+        try {
+          await analyzeCommand(String(row.id));
+          done++;
+        } catch (retryErr) {
+          log.error(`Failed to analyze #${row.id}: ${(retryErr as Error).message.slice(0, 100)}`);
+        }
+      } else {
+        log.error(`Failed to analyze #${row.id}: ${msg.slice(0, 100)}`);
+      }
     }
   }
 }

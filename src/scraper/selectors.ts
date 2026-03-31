@@ -1,41 +1,48 @@
 /**
  * All Bazaraki CSS selectors in one place.
  * If scraping breaks, update here first.
- * Run `bazaraki-cars scrape --validate` to check selectors on live site.
+ *
+ * Last verified: 2026-03-28 (new advert-card layout)
  */
 export const SELECTORS = {
   // ── Search results page ────────────────────────────────────────────────────
-  listingCard: 'li.announcement-container',
-  listingLink: 'a.announcement-block',
-  listingTitle: 'h3.announcement-block__title',
-  listingPrice: '.announcement-block__price',
-  listingMeta: '.announcement-block__characteristics',
-  listingLocation: '.announcement-block__date-location',
+  listingCard: 'div.advert.js-item-listing',
+  listingLink: 'a.advert__content-title',
+  listingTitle: 'a.advert__content-title',
+  listingPrice: 'a.advert__content-price',
+  listingFeature: '.advert__content-feature > div',
+  listingLocation: '.advert__content-place',
+  listingDate: '.advert__content-date',
+  listingSellerName: '.advert__header-name span',
+  listingSellerLogo: 'a.advert__header-logo',
 
   // ── Individual listing page ────────────────────────────────────────────────
-  detailTitle: 'h1.announcement-title, h1[itemprop="name"]',
+  detailTitle: 'h1.title-announcement, h1[itemprop="name"]',
   detailPrice: '.announcement-price__cost',
-  detailDescription: '.announcement-description',
+  detailPriceMeta: 'meta[itemprop="price"]',
+  detailDescription: '.js-description',
+  detailDescriptionFallback: '.announcement-description',
 
   // Characteristic rows (key/value pairs)
-  detailParams: '.announcement-characteristics__item',
-  paramKey: '.announcement-characteristics__key',
-  paramValue: '.announcement-characteristics__value',
+  detailCharsList: '.announcement-characteristics li',
+  paramKey: 'span.key-chars',
+  paramValue: 'a.value-chars, span.value-chars',
 
   // Phone number reveal
-  phoneButton: '.phone-action button, button.call-button, [data-action="show-phone"]',
-  phoneNumber: '.phone-action__phone, .js-phone-number',
+  phoneButton: '.phone-author.js-phone-show',
+  phoneCheckUrl: '/phone_check/',
+  phoneDialog: '.contacts-dialog__phone a[href^="tel:"]',
+  phoneTelLink: 'a[href^="tel:"]',
 
   // Seller info
-  sellerName: '.author-detail .announcement-author__name, .seller-name',
-  sellerTypeDealer: '.announcement-author--dealer, [class*="dealer"]',
+  sellerName: '.advert__header-name span',
+  sellerTypeDealer: 'a.advert__header-logo',
 
   // Images
-  imageGallery: '.announcement-media__image img, .gallery-slide img',
+  imageGallery: 'img.announcement__images-item',
 
   // Pagination
-  nextPageLink: 'a[rel="next"], .pagination .next a',
-  paginationInfo: '.pagination__items',
+  nextPageLink: 'a.number-list-next',
 } as const;
 
 /**

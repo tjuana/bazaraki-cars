@@ -1,4 +1,4 @@
-import { getClient } from './client.js';
+import { getClient, DEFAULT_MODEL } from './client.js';
 import { MESSENGER_SYSTEM } from './prompts.js';
 import type { Listing } from '../types/index.js';
 import type { AnalysisToolOutput } from './tools.js';
@@ -8,7 +8,7 @@ export async function generateInitialMessage(
   analysis: AnalysisToolOutput
 ): Promise<string> {
   const model = getClient().getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: DEFAULT_MODEL,
     systemInstruction: MESSENGER_SYSTEM,
   });
 

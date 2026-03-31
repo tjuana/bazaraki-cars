@@ -13,10 +13,10 @@ export async function parseListingPage(page: Page, url: string): Promise<RawList
   let phoneRaw = '';
 
   try {
-    // Method 1: click the "show phone" button and intercept the response
+    // Click the "Call" / phone button and wait for the phone_check response
     const phoneResponsePromise = page.waitForResponse(
-      (res) => res.url().includes('phone') && res.status() === 200,
-      { timeout: 4000 }
+      (res) => res.url().includes('phone_check') && res.status() === 200,
+      { timeout: 5000 }
     ).catch(() => null);
 
     const phoneBtn = await page.$(SELECTORS.phoneButton);
@@ -26,20 +26,45 @@ export async function parseListingPage(page: Page, url: string): Promise<RawList
 
       if (phoneResponse) {
         try {
-          const json = await phoneResponse.json();
-          phoneRaw = json?.phone ?? json?.phone_number ?? json?.data?.phone ?? '';
+          // The phone_check endpoint may return HTML with a dialog containing the phone
+          const body = await phoneResponse.text();
+          const telMatch = body.match(/href="tel:([^"]+)"/);
+          if (telMatch) {
+            phoneRaw = telMatch[1];
+          } else {
+            // Try JSON format
+            try {
+              const json = JSON.parse(body);
+              phoneRaw = json?.phone ?? json?.phone_number ?? json?.data?.phone ?? '';
+            } catch {
+              // not JSON — try extracting digits
+              const digitMatch = body.match(/(\+?357\d{8})/);
+              if (digitMatch) phoneRaw = digitMatch[1];
+            }
+          }
         } catch {
-          // not JSON
+          // ignore parse errors
         }
       }
 
-      // Method 2: read from DOM after click
+      // Fallback: look for tel link in dialog that appeared after click
       if (!phoneRaw) {
         await page.waitForTimeout(1500);
         phoneRaw = await page.$eval(
-          SELECTORS.phoneNumber,
-          (el) => el.textContent?.trim() ?? ''
+          SELECTORS.phoneDialog,
+          (el) => el.getAttribute('href')?.replace('tel:', '') ?? el.textContent?.trim() ?? ''
         ).catch(() => '');
+      }
+    }
+
+    // Fallback: any tel: link on the page (skip site phone in header)
+    if (!phoneRaw) {
+      const telLinks = await page.$$eval('a[href^="tel:"]', (els) =>
+        els.map((el) => el.getAttribute('href')?.replace('tel:', '') ?? '').filter(Boolean)
+      );
+      // The listing phone is usually the last tel link (header phone comes first)
+      if (telLinks.length > 0) {
+        phoneRaw = telLinks[telLinks.length - 1];
       }
     }
   } catch {
@@ -51,19 +76,35 @@ export async function parseListingPage(page: Page, url: string): Promise<RawList
   const $ = cheerio.load(html);
 
   const title = $(SELECTORS.detailTitle).first().text().trim();
-  const priceText = $(SELECTORS.detailPrice).first().text().trim();
-  const description = $(SELECTORS.detailDescription).first().text().trim();
+
+  // Price: prefer meta tag for clean numeric value (e.g. "13300.00")
+  const priceMeta = $(SELECTORS.detailPriceMeta).attr('content') ?? '';
+  let priceText: string;
+  if (priceMeta) {
+    // Meta content is like "13300.00" — convert to integer string to avoid parsePrice issues
+    const euros = Math.round(parseFloat(priceMeta));
+    priceText = isNaN(euros) ? $(SELECTORS.detailPrice).first().text().trim() : String(euros);
+  } else {
+    priceText = $(SELECTORS.detailPrice).first().text().trim();
+  }
+
+  // Description: prefer .js-description (actual text), fall back to container
+  let description = $(SELECTORS.detailDescription).first().text().trim();
+  if (!description) {
+    description = $(SELECTORS.detailDescriptionFallback).first().text().trim();
+  }
 
   // Key/value characteristics (year, mileage, engine, etc.)
   const params: Record<string, string> = {};
-  $(SELECTORS.detailParams).each((_, el) => {
-    const key = $(el).find(SELECTORS.paramKey).text().trim().toLowerCase();
+  $(SELECTORS.detailCharsList).each((_, el) => {
+    const key = $(el).find(SELECTORS.paramKey).text().trim().toLowerCase().replace(/:$/, '');
     const val = $(el).find(SELECTORS.paramValue).text().trim();
     if (key && val) params[key] = val;
   });
 
-  const sellerName = $(SELECTORS.sellerName).first().text().trim();
-  const isDealer = $(SELECTORS.sellerTypeDealer).length > 0;
+  // Seller: on the detail page, check for dealer shop link
+  const sellerName = $('.announcement-author__name, .shop-name, .advert__header-name span').first().text().trim();
+  const isDealer = $('a.advert__header-logo, a[href^="/c/"]').length > 0;
 
   const imageUrls: string[] = [];
   $(SELECTORS.imageGallery).each((_, img) => {

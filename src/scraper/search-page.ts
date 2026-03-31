@@ -17,18 +17,26 @@ export async function parseSearchPage(page: Page): Promise<RawListingCard[]> {
   $(SELECTORS.listingCard).each((_, el) => {
     const card = $(el);
 
-    const linkEl = card.find(SELECTORS.listingLink).first();
-    const href = linkEl.attr('href') ?? '';
+    // External ID from data-id attribute
+    const externalId = card.attr('data-id') ?? '';
+    if (!externalId) return;
+
+    // Title and URL from the title link
+    const titleEl = card.find(SELECTORS.listingTitle).first();
+    const title = titleEl.text().trim();
+    const href = titleEl.attr('href') ?? '';
     const fullUrl = href.startsWith('http') ? href : `https://www.bazaraki.com${href}`;
 
-    // Extract external ID from URL path: /adv/12345678_.../ or /adv/12345678/
-    const idMatch = fullUrl.match(/\/adv\/(\d+)/);
-    if (!idMatch) return;
+    // Price text
+    const priceText = card.find(SELECTORS.listingPrice).first().text().trim();
 
-    const externalId = idMatch[1];
-    const title = card.find(SELECTORS.listingTitle).text().trim();
-    const priceText = card.find(SELECTORS.listingPrice).text().trim();
-    const metaText = card.find(SELECTORS.listingMeta).text().trim();
+    // Features (mileage, transmission, fuel) joined as meta text
+    const features: string[] = [];
+    card.find(SELECTORS.listingFeature).each((_, feat) => {
+      const text = $(feat).text().trim();
+      if (text) features.push(text);
+    });
+    const metaText = features.join(' · ');
 
     if (!externalId || !title) return;
 
