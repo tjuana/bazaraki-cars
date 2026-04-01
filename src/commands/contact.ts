@@ -7,6 +7,32 @@ import type { Listing } from '../types/index.js';
 import type { AnalysisToolOutput } from '../ai/tools.js';
 import { log } from '../utils/logger.js';
 import chalk from 'chalk';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const VCF_DIR = join(__dirname, '../../data/contacts');
+
+function saveAndOpenVcf(phone: string, name: string, listingId: number): void {
+  mkdirSync(VCF_DIR, { recursive: true });
+  const vcf = `BEGIN:VCARD
+VERSION:3.0
+FN:${name}
+TEL;TYPE=CELL:+${phone}
+NOTE:Bazaraki listing #${listingId}
+END:VCARD`;
+  const path = join(VCF_DIR, `bazaraki-${listingId}.vcf`);
+  writeFileSync(path, vcf);
+  log.info(`Контакт сохранён: ${path}`);
+  try {
+    execSync(`open "${path}"`);
+    log.success('Контакт открыт — добавь в Контакты, потом он появится в WhatsApp.');
+  } catch {
+    log.dim(`Открой вручную: ${path}`);
+  }
+}
 
 export async function contactCommand(id: string) {
   const db = getDb();
@@ -86,14 +112,20 @@ export async function contactCommand(id: string) {
   }
 
   const phone = row.phoneNormalized ?? row.phoneRaw!;
+  const contactName = `Bazaraki ${row.title.slice(0, 30)}`;
+
+  // Save contact as .vcf and open it so it gets added to Contacts → WhatsApp Web
+  saveAndOpenVcf(phone, contactName, listingId);
+
   const waLink = generateWhatsAppLink(phone, message);
 
   log.section('WhatsApp Message');
   console.log(chalk.white.bold('\n' + message + '\n'));
   console.log(chalk.bold('WhatsApp link:'));
   console.log(chalk.cyan(waLink));
-  console.log(chalk.dim('\n👆 Click the link above to open WhatsApp with this message pre-filled.'));
-  console.log(chalk.dim('   Review the message, then hit Send.'));
+  console.log(chalk.dim('\n1. Добавь контакт (окно уже открыто)'));
+  console.log(chalk.dim('2. Обнови WhatsApp Web'));
+  console.log(chalk.dim('3. Кликни ссылку выше'));
 
   // Save to conversations
   const now = new Date().toISOString();

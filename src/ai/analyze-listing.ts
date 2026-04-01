@@ -1,4 +1,4 @@
-import { getClient, DEFAULT_MODEL } from './client.js';
+import { getClient, getGroqClient, getProvider, GEMINI_MODEL, GROQ_MODEL } from './client.js';
 import { ANALYST_SYSTEM } from './prompts.js';
 import type { AnalysisToolOutput } from './tools.js';
 import type { Listing } from '../types/index.js';
@@ -26,16 +26,7 @@ const RESPONSE_SCHEMA = {
   ],
 };
 
-export async function analyzeListing(listing: Listing): Promise<AnalysisToolOutput> {
-  const model = getClient().getGenerativeModel({
-    model: DEFAULT_MODEL,
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: RESPONSE_SCHEMA as never,
-    },
-    systemInstruction: ANALYST_SYSTEM,
-  });
-
+function buildPrompt(listing: Listing): string {
   const priceDisplay = listing.price ? eurCentsToDisplay(listing.price) : 'not specified';
   const mileageDisplay = listing.mileage ? `${listing.mileage.toLocaleString()} km` : 'not specified';
   const mileageSanity =
@@ -45,7 +36,7 @@ export async function analyzeListing(listing: Listing): Promise<AnalysisToolOutp
         : '⚠ SUSPICIOUS for this age'
       : 'unknown';
 
-  const prompt = `Analyze this car listing from Bazaraki.com Cyprus:
+  return `Analyze this car listing from Bazaraki.com Cyprus:
 
 Title: ${listing.title}
 Asking price: ${priceDisplay}
@@ -58,7 +49,67 @@ District: ${listing.district ?? 'unknown'}
 Description: ${listing.description ?? '(none)'}
 
 Return JSON analysis. recommendation must be one of: strong_buy, buy, negotiate, caution, avoid.`;
+}
 
-  const result = await model.generateContent(prompt);
+async function analyzeWithGemini(listing: Listing): Promise<AnalysisToolOutput> {
+  const model = getClient().getGenerativeModel({
+    model: GEMINI_MODEL,
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: RESPONSE_SCHEMA as never,
+    },
+    systemInstruction: ANALYST_SYSTEM,
+  });
+
+  const result = await model.generateContent(buildPrompt(listing));
   return JSON.parse(result.response.text()) as AnalysisToolOutput;
+}
+
+async function analyzeWithGroq(listing: Listing): Promise<AnalysisToolOutput> {
+  const groq = getGroqClient();
+
+  const jsonSpec = `
+Respond with a JSON object with EXACTLY these keys:
+{
+  "fair_price_min_eur": <number>,
+  "fair_price_max_eur": <number>,
+  "overprice_percent": <number>,
+  "risk_score": <number 1-10>,
+  "risks": [<string>, ...],
+  "recommendation": "<strong_buy|buy|negotiate|caution|avoid>",
+  "suggested_offer_eur": <number>,
+  "summary": "<string: 2-3 sentence analysis>",
+  "questions_for_seller": [<string>, ...]
+}`;
+
+  const result = await groq.chat.completions.create({
+    model: GROQ_MODEL,
+    messages: [
+      { role: 'system', content: ANALYST_SYSTEM + '\n\n' + jsonSpec },
+      { role: 'user', content: buildPrompt(listing) },
+    ],
+    response_format: { type: 'json_object' },
+    temperature: 0.3,
+  });
+
+  const text = result.choices[0]?.message?.content ?? '{}';
+  const raw = JSON.parse(text);
+
+  // Normalize — Llama sometimes uses different key names
+  return {
+    fair_price_min_eur: raw.fair_price_min_eur ?? raw.fairPriceMinEur ?? 0,
+    fair_price_max_eur: raw.fair_price_max_eur ?? raw.fairPriceMaxEur ?? 0,
+    overprice_percent: raw.overprice_percent ?? raw.overpricePercent ?? 0,
+    risk_score: raw.risk_score ?? raw.riskScore ?? 5,
+    risks: raw.risks ?? [],
+    recommendation: raw.recommendation ?? 'negotiate',
+    suggested_offer_eur: raw.suggested_offer_eur ?? raw.suggestedOfferEur ?? 0,
+    summary: raw.summary ?? raw.analysis ?? raw.description ?? 'No summary provided',
+    questions_for_seller: raw.questions_for_seller ?? raw.questionsForSeller ?? raw.questions ?? [],
+  } as AnalysisToolOutput;
+}
+
+export async function analyzeListing(listing: Listing): Promise<AnalysisToolOutput> {
+  const provider = getProvider();
+  return provider === 'groq' ? analyzeWithGroq(listing) : analyzeWithGemini(listing);
 }

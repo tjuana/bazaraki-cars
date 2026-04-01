@@ -160,11 +160,16 @@ async function listingExists(externalId: string): Promise<boolean> {
 async function saveListing(data: ReturnType<typeof normalizeListing>): Promise<number> {
   const db = getDb();
   const now = new Date().toISOString();
-  const result = await db
-    .insert(schema.listings)
-    .values({ ...data, scrapedAt: now })
-    .returning({ id: schema.listings.id });
-  return result[0].id;
+  try {
+    const result = await db
+      .insert(schema.listings)
+      .values({ ...data, scrapedAt: now })
+      .returning({ id: schema.listings.id });
+    return result[0].id;
+  } catch (err) {
+    if ((err as Error).message.includes('UNIQUE')) return -1;
+    throw err;
+  }
 }
 
 /** Показывает countdown чтобы было видно что приложение не зависло */
@@ -231,6 +236,7 @@ async function scrapeBrand(
         const normalized = normalizeListing(card, detail);
 
         const id = await saveListing(normalized);
+        if (id === -1) { skipped++; log.dim(`  ${num} Дубликат: ${card.title.slice(0, 50)}`); continue; }
         saved++;
 
         const price = normalized.price ? chalk.green(`€${normalized.price / 100}`) : chalk.dim('цена?');
