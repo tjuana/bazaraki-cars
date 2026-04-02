@@ -267,14 +267,31 @@ listingsRouter.post('/:id/analyze-photos', async (req, res) => {
   const imageUrls: string[] = JSON.parse(rows[0].imageUrls ?? '[]');
   if (imageUrls.length === 0) return res.status(400).json({ error: 'No photos for this listing' });
 
-  // Proxy URLs through our server so Groq can fetch them (Bazaraki blocks external referers)
-  const PORT = process.env.PORT ?? 3001;
-  const proxiedUrls = imageUrls.slice(0, 6).map(
-    (url) => `http://localhost:${PORT}/proxy/image?url=${encodeURIComponent(url)}`
-  );
+  // Fetch images server-side and convert to base64 data URLs
+  // (Groq can't access localhost or Bazaraki directly)
+  const dataUrls: string[] = [];
+  for (const url of imageUrls.slice(0, 6)) {
+    try {
+      const imgRes = await fetch(url, {
+        headers: {
+          'Referer': 'https://www.bazaraki.com/',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        },
+      });
+      if (!imgRes.ok) continue;
+      const buffer = await imgRes.arrayBuffer();
+      const mime = imgRes.headers.get('content-type') ?? 'image/jpeg';
+      const b64 = Buffer.from(buffer).toString('base64');
+      dataUrls.push(`data:${mime};base64,${b64}`);
+    } catch { /* skip failed images */ }
+  }
+
+  if (dataUrls.length === 0) {
+    return res.status(400).json({ error: 'Could not fetch any photos from Bazaraki' });
+  }
 
   try {
-    const result = await analyzePhotos(proxiedUrls);
+    const result = await analyzePhotos(dataUrls);
     res.json(result);
   } catch (err) {
     const e = err as Error & { status?: number; error?: { message?: string } };
