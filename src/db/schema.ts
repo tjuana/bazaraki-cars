@@ -56,3 +56,21 @@ export const conversations = sqliteTable('conversations', {
   whatsappLink: text('whatsapp_link'),
   createdAt: text('created_at').notNull(),
 });
+
+export const callNotes = sqliteTable('call_notes', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  listingId: integer('listing_id')
+    .notNull()
+    .references(() => listings.id),
+  notes: text('notes').default(''),
+  checkedQuestions: text('checked_questions').default('[]'), // JSON array of checked indices
+  calledAt: text('called_at'),
+  outcome: text('outcome'),                      // interested | too_expensive | not_responding | rejected
+  savedAt: text('saved_at').notNull(),
+});
+
+export const configs = sqliteTable('configs', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),                // JSON value
+  updatedAt: text('updated_at').notNull(),
+});
