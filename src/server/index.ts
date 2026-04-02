@@ -6,6 +6,7 @@ import { dashboardRouter } from './routes/dashboard.js';
 import { analyzeRouter } from './routes/analyze.js';
 import { scrapeRouter } from './routes/scrape.js';
 import { configRouter } from './routes/config.js';
+import { proxyRouter } from './routes/proxy.js';
 
 loadEnv();
 
@@ -20,6 +21,7 @@ app.use('/dashboard', dashboardRouter);
 app.use('/analyze', analyzeRouter);
 app.use('/scrape', scrapeRouter);
 app.use('/config', configRouter);
+app.use('/proxy', proxyRouter);
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 

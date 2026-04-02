@@ -1,29 +1,35 @@
 const BASE = 'http://localhost:3001';
 
-async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`);
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+async function handleResponse<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    let msg = `${res.status} ${res.statusText}`;
+    try {
+      const body = await res.json();
+      if (body?.error) msg = body.error;
+    } catch { /* ignore parse error */ }
+    throw new Error(msg);
+  }
   return res.json();
+}
+
+async function get<T>(path: string): Promise<T> {
+  return handleResponse(await fetch(`${BASE}${path}`));
 }
 
 async function post<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  return handleResponse(await fetch(`${BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json();
+  }));
 }
 
 async function patch<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  return handleResponse(await fetch(`${BASE}${path}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json();
+  }));
 }
 
 // Types
@@ -111,6 +117,18 @@ export const api = {
 
   saveCallNotes: (id: number, data: { notes?: string; checkedQuestions?: number[]; outcome?: string; calledAt?: string }) =>
     post<{ ok: boolean }>(`/listings/${id}/call-notes`, data),
+
+  generateWhatsApp: (id: number) =>
+    post<{ message: string; waLink: string | null }>(`/listings/${id}/whatsapp-message`),
+
+  analyzePhotos: (id: number) =>
+    post<{
+      overallCondition: 'excellent' | 'good' | 'fair' | 'poor';
+      issues: string[];
+      positives: string[];
+      accidentSuspicion: 'none' | 'low' | 'medium' | 'high';
+      summary: string;
+    }>(`/listings/${id}/analyze-photos`),
 
   analyze: (id: number) => post<{ ok: boolean }>(`/analyze/${id}`),
 

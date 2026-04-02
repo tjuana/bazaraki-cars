@@ -37,6 +37,7 @@ export function getGroqClient(): Groq {
 
 export const GEMINI_MODEL = 'gemini-2.0-flash';
 export const GROQ_MODEL = 'llama-3.3-70b-versatile';
+export const GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
 export function getFlashModel() {
   return getClient().getGenerativeModel({ model: GEMINI_MODEL });

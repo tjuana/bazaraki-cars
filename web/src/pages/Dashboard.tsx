@@ -17,34 +17,38 @@ export default function Dashboard() {
     onSuccess: () => setTimeout(() => qc.invalidateQueries({ queryKey: ['dashboard'] }), 2000),
   });
 
-  if (isLoading) return <div className="text-gray-500 py-12 text-center">Loading...</div>;
+  if (isLoading) return <div className="text-gray-400 py-12 text-center">Loading...</div>;
   if (!data) return null;
 
   const { total, byStatus, hotDeals } = data;
 
   const statuses = ['new', 'analyzed', 'contacted', 'negotiating', 'rejected', 'bought'];
   const statusColors: Record<string, string> = {
-    new: 'text-gray-300', analyzed: 'text-blue-400', contacted: 'text-yellow-400',
-    negotiating: 'text-purple-400', rejected: 'text-red-400', bought: 'text-green-400',
+    new: 'text-gray-600 dark:text-gray-300',
+    analyzed: 'text-blue-600 dark:text-blue-400',
+    contacted: 'text-yellow-600 dark:text-yellow-400',
+    negotiating: 'text-purple-600 dark:text-purple-400',
+    rejected: 'text-red-600 dark:text-red-400',
+    bought: 'text-green-600 dark:text-green-400',
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-white">Dashboard</h1>
+        <h1 className="text-xl font-bold">Dashboard</h1>
         <div className="flex gap-2">
           <button
             onClick={() => scrape.mutate()}
             disabled={scrape.isPending || scrapeStatus?.scraping}
-            className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-sm rounded transition-colors"
+            className="px-3 py-1.5 cursor-pointer bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 text-sm rounded transition-colors"
           >
             {scrapeStatus?.scraping ? '⏳ Scraping...' : '🔍 Scrape'}
           </button>
           <button
             onClick={() => analyzeAll.mutate()}
             disabled={analyzeAll.isPending}
-            className="px-3 py-1.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-sm rounded transition-colors"
+            className="px-3 py-1.5 cursor-pointer bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded transition-colors"
           >
             {analyzeAll.isPending ? '⏳ Analyzing...' : '🤖 Analyze all'}
           </button>
@@ -52,21 +56,21 @@ export default function Dashboard() {
       </div>
 
       {analyzeAll.data && (
-        <div className="bg-blue-950 border border-blue-800 rounded p-3 text-sm text-blue-300">
+        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded p-3 text-sm text-blue-700 dark:text-blue-300">
           Queued {analyzeAll.data.queued} listings for analysis — running in background.
         </div>
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-        <div className="col-span-3 sm:col-span-1 bg-gray-900 rounded-lg p-4 border border-gray-800">
-          <div className="text-3xl font-bold text-white">{total}</div>
-          <div className="text-xs text-gray-500 mt-1">Total listings</div>
+      <div className="grid grid-cols-3 sm:grid-cols-7 gap-3">
+        <div className="col-span-3 sm:col-span-1 bg-white dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-800 shadow-sm">
+          <div className="text-3xl font-bold">{total}</div>
+          <div className="text-xs text-gray-400 mt-1">Total</div>
         </div>
         {statuses.map((s) => (
-          <div key={s} className="bg-gray-900 rounded-lg p-4 border border-gray-800">
+          <div key={s} className="bg-white dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-800 shadow-sm">
             <div className={`text-2xl font-bold ${statusColors[s]}`}>{byStatus[s] ?? 0}</div>
-            <div className="text-xs text-gray-500 mt-1 capitalize">{s}</div>
+            <div className="text-xs text-gray-400 mt-1 capitalize">{s}</div>
           </div>
         ))}
       </div>
@@ -74,13 +78,13 @@ export default function Dashboard() {
       {/* Hot Deals */}
       {hotDeals.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-            🔥 Hot Deals (risk ≤ 4, not yet contacted)
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            🔥 Hot Deals (risk ≤ 4)
           </h2>
-          <div className="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-800 text-gray-500 text-xs">
+                <tr className="border-b border-gray-100 dark:border-gray-800 text-xs text-gray-400">
                   <th className="text-left px-4 py-2">ID</th>
                   <th className="text-left px-4 py-2">Car</th>
                   <th className="text-right px-4 py-2">Price</th>
@@ -92,18 +96,18 @@ export default function Dashboard() {
               </thead>
               <tbody>
                 {hotDeals.map((r) => (
-                  <tr key={r.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
-                    <td className="px-4 py-3 text-gray-500">#{r.id}</td>
+                  <tr key={r.id} className="border-b border-gray-100 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                    <td className="px-4 py-3 text-gray-400">#{r.id}</td>
                     <td className="px-4 py-3">
-                      <div className="text-white font-medium">{r.title}</div>
-                      <div className="text-xs text-gray-500">{r.year} · {r.mileage ? `${r.mileage.toLocaleString()} km` : '—'} · {r.district ?? '—'}</div>
+                      <div className="font-medium">{r.title}</div>
+                      <div className="text-xs text-gray-400">{r.year} · {r.mileage ? `${r.mileage.toLocaleString()} km` : '—'} · {r.district ?? '—'}</div>
                     </td>
-                    <td className="px-4 py-3 text-right text-white">{eur(r.price)}</td>
-                    <td className="px-4 py-3 text-right text-green-400">{eur(r.suggestedOffer)}</td>
+                    <td className="px-4 py-3 text-right font-medium">{eur(r.price)}</td>
+                    <td className="px-4 py-3 text-right text-green-600 dark:text-green-400">{eur(r.suggestedOffer)}</td>
                     <td className="px-4 py-3 text-center"><RiskBadge score={r.riskScore} /></td>
                     <td className="px-4 py-3"><RecBadge rec={r.recommendation} /></td>
                     <td className="px-4 py-3">
-                      <Link to={`/listings/${r.id}`} className="text-blue-400 hover:text-blue-300 text-xs">
+                      <Link to={`/listings/${r.id}`} className="text-blue-500 hover:text-blue-400 text-xs cursor-pointer">
                         View →
                       </Link>
                     </td>
