@@ -19,6 +19,7 @@ export const listings = sqliteTable('listings', {
   description: text('description'),
   phoneRaw: text('phone_raw'),
   phoneNormalized: text('phone_normalized'),
+  whatsappUrl: text('whatsapp_url'),
   sellerName: text('seller_name'),
   sellerType: text('seller_type').default('unknown'),
   district: text('district'),

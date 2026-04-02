@@ -147,29 +147,38 @@ function buildSearchUrl(config: Config, brand?: string, model?: string, district
   return qs ? `${base}?${qs}` : base;
 }
 
-async function listingExists(externalId: string): Promise<boolean> {
+async function findListing(externalId: string): Promise<{ id: number; price: number | null } | null> {
   const db = getDb();
   const result = await db
-    .select({ id: schema.listings.id })
+    .select({ id: schema.listings.id, price: schema.listings.price })
     .from(schema.listings)
     .where(eq(schema.listings.externalId, externalId))
     .limit(1);
-  return result.length > 0;
+  return result[0] ?? null;
 }
 
-async function saveListing(data: ReturnType<typeof normalizeListing>): Promise<number> {
+/** Returns id (new), 0 (price updated), -1 (unchanged/skip) */
+async function saveListing(data: ReturnType<typeof normalizeListing>): Promise<{ id: number; priceChanged: boolean }> {
   const db = getDb();
   const now = new Date().toISOString();
-  try {
-    const result = await db
-      .insert(schema.listings)
-      .values({ ...data, scrapedAt: now })
-      .returning({ id: schema.listings.id });
-    return result[0].id;
-  } catch (err) {
-    if ((err as Error).message.includes('UNIQUE')) return -1;
-    throw err;
+
+  const existing = await findListing(data.externalId);
+  if (existing) {
+    if (existing.price !== data.price && data.price !== null) {
+      await db
+        .update(schema.listings)
+        .set({ price: data.price, scrapedAt: now })
+        .where(eq(schema.listings.id, existing.id));
+      return { id: existing.id, priceChanged: true };
+    }
+    return { id: -1, priceChanged: false };
   }
+
+  const result = await db
+    .insert(schema.listings)
+    .values({ ...data, scrapedAt: now })
+    .returning({ id: schema.listings.id });
+  return { id: result[0].id, priceChanged: false };
 }
 
 /** Показывает countdown чтобы было видно что приложение не зависло */
@@ -221,12 +230,6 @@ async function scrapeBrand(
       const card = cards[i];
       const num = `[${i + 1}/${cards.length}]`;
 
-      if (await listingExists(card.externalId)) {
-        skipped++;
-        log.dim(`  ${num} Уже в базе: ${card.title.slice(0, 50)}`);
-        continue;
-      }
-
       await waitWithCountdown(config.scrapeDelayMs.min, config.scrapeDelayMs.max);
 
       log.info(`  ${num} Открываю: ${card.title.slice(0, 55)}`);
@@ -235,15 +238,16 @@ async function scrapeBrand(
         const detail = await parseListingPage(page, card.url);
         const normalized = normalizeListing(card, detail);
 
-        const id = await saveListing(normalized);
-        if (id === -1) { skipped++; log.dim(`  ${num} Дубликат: ${card.title.slice(0, 50)}`); continue; }
+        const { id, priceChanged } = await saveListing(normalized);
+        if (id === -1) { skipped++; log.dim(`  ${num} Без изменений: ${card.title.slice(0, 50)}`); continue; }
         saved++;
 
         const price = normalized.price ? chalk.green(`€${normalized.price / 100}`) : chalk.dim('цена?');
         const km = normalized.mileage ? chalk.cyan(`${normalized.mileage.toLocaleString()}km`) : chalk.dim('пробег?');
         const phone = normalized.phoneNormalized ? chalk.yellow(`📞 +${normalized.phoneNormalized}`) : chalk.red('❌ нет телефона');
+        const tag = priceChanged ? chalk.magenta(' [цена обновлена!]') : '';
 
-        log.success(`  ${num} #${id}: ${normalized.title.slice(0, 40)} — ${price} ${km} ${phone}`);
+        log.success(`  ${num} #${id}: ${normalized.title.slice(0, 40)} — ${price} ${km} ${phone}${tag}`);
       } catch (err) {
         failed++;
         log.error(`  ${num} Ошибка парсинга: ${(err as Error).message.slice(0, 80)}`);

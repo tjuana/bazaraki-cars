@@ -11,6 +11,7 @@ export async function parseListingPage(page: Page, url: string): Promise<RawList
 
   // ── Try to reveal phone number ───────────────────────────────────────────
   let phoneRaw = '';
+  let whatsappUrl = '';
 
   try {
     // Click the "Call" / phone button and wait for the phone_check response
@@ -67,6 +68,12 @@ export async function parseListingPage(page: Page, url: string): Promise<RawList
         phoneRaw = telLinks[telLinks.length - 1];
       }
     }
+
+    // Grab WhatsApp link if visible after phone reveal
+    whatsappUrl = await page.$eval(
+      SELECTORS.whatsappLink,
+      (el) => el.getAttribute('href') ?? ''
+    ).catch(() => '');
   } catch {
     log.dim(`  Phone not found on ${url}`);
   }
@@ -120,6 +127,7 @@ export async function parseListingPage(page: Page, url: string): Promise<RawList
     description,
     params,
     phoneRaw,
+    whatsappUrl,
     sellerName,
     sellerType: isDealer ? 'dealer' : sellerName ? 'private' : 'unknown',
     imageUrls,

@@ -82,6 +82,7 @@ export interface RawListingDetail {
   description: string;
   params: Record<string, string>;
   phoneRaw: string;
+  whatsappUrl: string;
   sellerName: string;
   sellerType: SellerType;
   imageUrls: string[];

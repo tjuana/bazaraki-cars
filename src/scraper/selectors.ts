@@ -33,6 +33,7 @@ export const SELECTORS = {
   phoneCheckUrl: '/phone_check/',
   phoneDialog: '.contacts-dialog__phone a[href^="tel:"]',
   phoneTelLink: 'a[href^="tel:"]',
+  whatsappLink: 'a[href*="wa.me"], a[href*="whatsapp.com"]',
 
   // Seller info
   sellerName: '.advert__header-name span',

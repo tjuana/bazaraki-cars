@@ -74,19 +74,7 @@ async function runAnalyze(id: number): Promise<{ ok: boolean; error?: string }> 
   return { ok: true };
 }
 
-// POST /analyze/:id
-analyzeRouter.post('/:id', async (req, res) => {
-  const id = Number(req.params.id);
-  try {
-    const result = await runAnalyze(id);
-    if (!result.ok) return res.status(404).json({ error: result.error });
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
-  }
-});
-
-// POST /analyze-all
+// POST /analyze/all  — must be before /:id to avoid being caught as id="all"
 analyzeRouter.post('/all', async (_req, res) => {
   const db = getDb();
   const rows = await db
@@ -109,4 +97,16 @@ analyzeRouter.post('/all', async (_req, res) => {
       }
     }
   })();
+});
+
+// POST /analyze/:id  — after /all to avoid route conflict
+analyzeRouter.post('/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    const result = await runAnalyze(id);
+    if (!result.ok) return res.status(404).json({ error: result.error });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
 });

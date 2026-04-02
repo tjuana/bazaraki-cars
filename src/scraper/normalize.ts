@@ -20,6 +20,7 @@ export interface NormalizedListing {
   description: string | null;
   phoneRaw: string | null;
   phoneNormalized: string | null;
+  whatsappUrl: string | null;
   sellerName: string | null;
   sellerType: string;
   imageUrls: string;   // JSON
@@ -134,6 +135,7 @@ export function normalizeListing(
     description: detail.description || null,
     phoneRaw: detail.phoneRaw || null,
     phoneNormalized,
+    whatsappUrl: detail.whatsappUrl || null,
     sellerName: detail.sellerName || null,
     sellerType: detail.sellerType,
     imageUrls: JSON.stringify(detail.imageUrls),
