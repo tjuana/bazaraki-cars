@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api, type Config } from '../api/client.ts';
+import { useToast } from '../components/Toast.tsx';
 
 export default function Config() {
+  const { toast } = useToast();
   const { data, isLoading } = useQuery({ queryKey: ['config'], queryFn: api.config });
   const [form, setForm] = useState<Partial<Config>>({});
-  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (data) setForm(data);
@@ -13,7 +14,8 @@ export default function Config() {
 
   const save = useMutation({
     mutationFn: () => api.saveConfig(form),
-    onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 2000); },
+    onSuccess: () => toast('Config saved', 'success'),
+    onError: (err) => toast(`Failed to save: ${err.message}`, 'error'),
   });
 
   if (isLoading) return <div className="text-gray-500 py-12 text-center">Loading...</div>;
@@ -163,7 +165,7 @@ export default function Config() {
           disabled={save.isPending}
           className="px-4 py-2 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-sm rounded transition-colors font-medium"
         >
-          {save.isPending ? 'Saving...' : saved ? '✓ Saved!' : 'Save config'}
+          {save.isPending ? 'Saving...' : 'Save config'}
         </button>
       </div>
 

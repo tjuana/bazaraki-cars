@@ -79,6 +79,20 @@ export interface ListingDetail {
     calledAt: string | null;
     savedAt: string;
   } | null;
+  priceHistory: Array<{
+    id: number;
+    oldPrice: number | null;
+    newPrice: number;
+    source: string;
+    changedAt: string;
+  }>;
+  conversations: Array<{
+    id: number;
+    direction: 'incoming' | 'outgoing';
+    message: string;
+    whatsappLink: string | null;
+    createdAt: string;
+  }>;
 }
 
 export interface DashboardData {
@@ -101,13 +115,31 @@ export interface Config {
   scrapeMaxPages: number;
 }
 
+export interface PhotoAnalysis {
+  overallCondition: 'excellent' | 'good' | 'fair' | 'poor';
+  issues: string[];
+  positives: string[];
+  accidentSuspicion: 'none' | 'low' | 'medium' | 'high';
+  summary: string;
+  auctionSheet: {
+    rawText: string;
+    fields: Record<string, string>;
+    damageMarks: string[];
+    redFlags: string[];
+  } | null;
+  analyzedAt?: string;
+  cached?: boolean;
+}
+
 // API functions
 export const api = {
   dashboard: () => get<DashboardData>('/dashboard'),
 
+  brands: () => get<string[]>('/listings/brands'),
+
   listings: (params?: Record<string, string>) => {
     const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-    return get<ListingRow[]>(`/listings${qs}`);
+    return get<{ rows: ListingRow[]; total: number }>(`/listings${qs}`);
   },
 
   listing: (id: number) => get<ListingDetail>(`/listings/${id}`),
@@ -121,14 +153,13 @@ export const api = {
   generateWhatsApp: (id: number) =>
     post<{ message: string; waLink: string | null }>(`/listings/${id}/whatsapp-message`),
 
-  analyzePhotos: (id: number) =>
-    post<{
-      overallCondition: 'excellent' | 'good' | 'fair' | 'poor';
-      issues: string[];
-      positives: string[];
-      accidentSuspicion: 'none' | 'low' | 'medium' | 'high';
-      summary: string;
-    }>(`/listings/${id}/analyze-photos`),
+  photoAnalysis: (id: number) => get<PhotoAnalysis | null>(`/listings/${id}/photo-analysis`),
+
+  analyzePhotos: (id: number, force?: boolean) =>
+    post<PhotoAnalysis>(`/listings/${id}/analyze-photos${force ? '?force=1' : ''}`),
+
+  reply: (id: number, sellerMessage: string) =>
+    post<{ reply: string; waLink: string | null }>(`/listings/${id}/reply`, { sellerMessage }),
 
   analyze: (id: number) => post<{ ok: boolean }>(`/analyze/${id}`),
 
@@ -136,7 +167,14 @@ export const api = {
 
   scrape: (pages?: number) => post<{ ok: boolean }>('/scrape', { pages }),
 
-  scrapeStatus: () => get<{ scraping: boolean; lastResult: unknown }>('/scrape/status'),
+  scrapeStatus: () => get<{
+    scraping: boolean;
+    lastResult: unknown;
+    refreshing: boolean;
+    lastRefreshResult: { checked: number; expired: number; priceChanged: number; errors: number; finishedAt: string } | null;
+  }>('/scrape/status'),
+
+  refresh: () => post<{ ok: boolean }>('/scrape/refresh'),
 
   config: () => get<Config>('/config'),
 

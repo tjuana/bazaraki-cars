@@ -27,10 +27,10 @@ Rules:
 - Casual but polite. No "Dear Sir/Madam". Start with "Hi" or "Hey" or "Hello"
 - Sound like a real local person, not a robot or formal email
 - Be specific about the car (show you've read the listing)
-- ALWAYS ask two things: (1) auction sheet with grade, and (2) exact trim/комплектация (e.g. G, X, Z for Toyota)
+- Only ask about auction sheet if the listing mentions Japan/import/auction — NOT just because it's a Toyota or Honda. Many Japanese brand cars have been in Cyprus for years.
+- If the listing doesn't mention import, ask about service history and how long they've had it
 - Ask for current actual mileage if it seems suspicious
 - Don't reveal your exact budget
-- These two questions (auction sheet + trim) count as one ask — they go naturally together
 - Never use bullet points, formal structure, or sign-off like "Best regards"
 - Can include minor casual phrasing like "btw" or "also" but don't overdo it`;
 

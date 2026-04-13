@@ -1,34 +1,85 @@
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client.ts';
 import { RiskBadge, RecBadge, eur } from '../components/Badge.tsx';
+import { useToast } from '../components/Toast.tsx';
+
+const HOT_PAGE_SIZE = 5;
 
 export default function Dashboard() {
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const [hotPage, setHotPage] = useState(1);
   const { data, isLoading } = useQuery({ queryKey: ['dashboard'], queryFn: api.dashboard });
   const { data: scrapeStatus } = useQuery({ queryKey: ['scrapeStatus'], queryFn: api.scrapeStatus, refetchInterval: 3000 });
 
+  // Track previous status to detect completion
+  const prevStatus = useRef<{ refreshing?: boolean; scraping?: boolean }>({});
+  useEffect(() => {
+    if (!scrapeStatus) return;
+    const prev = prevStatus.current;
+
+    if (prev.refreshing && !scrapeStatus.refreshing && scrapeStatus.lastRefreshResult) {
+      const r = scrapeStatus.lastRefreshResult;
+      toast(
+        `Refresh done: ${r.checked} checked, ${r.expired} expired, ${r.priceChanged} price changes${r.errors > 0 ? `, ${r.errors} errors` : ''}`,
+        r.errors > 0 ? 'error' : 'success',
+        { duration: 6000 },
+      );
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['listings'] });
+    }
+
+    if (prev.scraping && !scrapeStatus.scraping) {
+      toast('Scrape finished', 'success', { duration: 5000 });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['listings'] });
+    }
+
+    prevStatus.current = { refreshing: scrapeStatus.refreshing, scraping: scrapeStatus.scraping };
+  }, [scrapeStatus, toast, qc]);
+
   const scrape = useMutation({
     mutationFn: () => api.scrape(5),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['scrapeStatus'] }),
+    onSuccess: () => {
+      toast('Scrape started...', 'info');
+      qc.invalidateQueries({ queryKey: ['scrapeStatus'] });
+    },
+    onError: (err) => toast(err.message, 'error'),
   });
   const analyzeAll = useMutation({
     mutationFn: api.analyzeAll,
-    onSuccess: () => setTimeout(() => qc.invalidateQueries({ queryKey: ['dashboard'] }), 2000),
+    onSuccess: (data) => {
+      toast(`Queued ${data.queued} listings for analysis`, 'info');
+      setTimeout(() => qc.invalidateQueries({ queryKey: ['dashboard'] }), 2000);
+    },
+    onError: (err) => toast(err.message, 'error'),
+  });
+  const refresh = useMutation({
+    mutationFn: api.refresh,
+    onSuccess: () => {
+      toast('Refresh started...', 'info');
+      qc.invalidateQueries({ queryKey: ['scrapeStatus'] });
+    },
+    onError: (err) => toast(err.message, 'error'),
   });
 
   if (isLoading) return <div className="text-gray-400 py-12 text-center">Loading...</div>;
   if (!data) return null;
 
   const { total, byStatus, hotDeals } = data;
+  const hotPages = Math.ceil(hotDeals.length / HOT_PAGE_SIZE);
+  const hotSlice = hotDeals.slice((hotPage - 1) * HOT_PAGE_SIZE, hotPage * HOT_PAGE_SIZE);
 
-  const statuses = ['new', 'analyzed', 'contacted', 'negotiating', 'rejected', 'bought'];
+  const statuses = ['new', 'analyzed', 'contacted', 'negotiating', 'rejected', 'expired', 'bought'];
   const statusColors: Record<string, string> = {
     new: 'text-gray-600 dark:text-gray-300',
     analyzed: 'text-blue-600 dark:text-blue-400',
     contacted: 'text-yellow-600 dark:text-yellow-400',
     negotiating: 'text-purple-600 dark:text-purple-400',
     rejected: 'text-red-600 dark:text-red-400',
+    expired: 'text-orange-500 dark:text-orange-400',
     bought: 'text-green-600 dark:text-green-400',
   };
 
@@ -39,8 +90,15 @@ export default function Dashboard() {
         <h1 className="text-xl font-bold">Dashboard</h1>
         <div className="flex gap-2">
           <button
+            onClick={() => refresh.mutate()}
+            disabled={refresh.isPending || scrapeStatus?.refreshing || scrapeStatus?.scraping}
+            className="px-3 py-1.5 cursor-pointer bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 text-sm rounded transition-colors"
+          >
+            {scrapeStatus?.refreshing ? '⏳ Refreshing...' : '🔄 Refresh'}
+          </button>
+          <button
             onClick={() => scrape.mutate()}
-            disabled={scrape.isPending || scrapeStatus?.scraping}
+            disabled={scrape.isPending || scrapeStatus?.scraping || scrapeStatus?.refreshing}
             className="px-3 py-1.5 cursor-pointer bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 text-sm rounded transition-colors"
           >
             {scrapeStatus?.scraping ? '⏳ Scraping...' : '🔍 Scrape'}
@@ -55,6 +113,14 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {scrapeStatus?.lastRefreshResult && (
+        <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded p-3 text-sm text-gray-600 dark:text-gray-400">
+          Last refresh: checked {scrapeStatus.lastRefreshResult.checked},&nbsp;
+          <span className="text-red-500">{scrapeStatus.lastRefreshResult.expired} expired</span>,&nbsp;
+          <span className="text-yellow-500">{scrapeStatus.lastRefreshResult.priceChanged} price changes</span>
+          {scrapeStatus.lastRefreshResult.errors > 0 && <>, <span className="text-red-400">{scrapeStatus.lastRefreshResult.errors} errors</span></>}
+        </div>
+      )}
       {analyzeAll.data && (
         <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded p-3 text-sm text-blue-700 dark:text-blue-300">
           Queued {analyzeAll.data.queued} listings for analysis — running in background.
@@ -78,9 +144,18 @@ export default function Dashboard() {
       {/* Hot Deals */}
       {hotDeals.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-            🔥 Hot Deals (risk ≤ 4)
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+              🔥 Hot Deals (risk ≤ 4) <span className="text-gray-400 font-normal normal-case">({hotDeals.length})</span>
+            </h2>
+            {hotPages > 1 && (
+              <div className="flex items-center gap-1 text-sm">
+                <button onClick={() => setHotPage((p) => Math.max(1, p - 1))} disabled={hotPage === 1} className="px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">←</button>
+                <span className="text-gray-400 px-1 text-xs">{hotPage}/{hotPages}</span>
+                <button onClick={() => setHotPage((p) => Math.min(hotPages, p + 1))} disabled={hotPage === hotPages} className="px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">→</button>
+              </div>
+            )}
+          </div>
           <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -95,7 +170,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {hotDeals.map((r) => (
+                {hotSlice.map((r) => (
                   <tr key={r.id} className="border-b border-gray-100 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
                     <td className="px-4 py-3 text-gray-400">#{r.id}</td>
                     <td className="px-4 py-3">

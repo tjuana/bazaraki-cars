@@ -69,14 +69,25 @@ export async function parseListingPage(page: Page, url: string): Promise<RawList
       }
     }
 
-    // Grab WhatsApp link if visible after phone reveal
-    whatsappUrl = await page.$eval(
-      SELECTORS.whatsappLink,
-      (el) => el.getAttribute('href') ?? ''
-    ).catch(() => '');
   } catch {
     log.dim(`  Phone not found on ${url}`);
   }
+
+  // ── Try to grab WhatsApp link (separate from phone) ───────────────────
+  try {
+    // Try the Start Chat button first
+    const chatBtn = await page.$('a.start-chat, a[data-target="whatsapp"], a[href*="wa.me"], a[href*="whatsapp.com"], a[href*="api.whatsapp"]');
+    if (chatBtn) {
+      whatsappUrl = await chatBtn.evaluate((el) => el.getAttribute('href') ?? '');
+    }
+    // Fallback: search all links
+    if (!whatsappUrl) {
+      const waLinks = await page.$$eval('a[href]', (els) =>
+        els.map((el) => el.getAttribute('href') ?? '').filter((h) => h.includes('wa.me') || h.includes('whatsapp.com') || h.includes('api.whatsapp'))
+      );
+      if (waLinks.length > 0) whatsappUrl = waLinks[0];
+    }
+  } catch { /* no whatsapp link */ }
 
   // ── Parse full page HTML ────────────────────────────────────────────────
   const html = await page.content();

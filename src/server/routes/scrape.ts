@@ -1,14 +1,38 @@
 import { Router } from 'express';
 import { runScrapePipeline } from '../../scraper/scrape-pipeline.js';
+import { runRefreshPipeline, type RefreshResult } from '../../scraper/refresh-pipeline.js';
 
 export const scrapeRouter = Router();
 
 let scraping = false;
 let lastResult: { saved: number; skipped: number; failed: number; finishedAt: string } | null = null;
 
+let refreshing = false;
+let lastRefreshResult: (RefreshResult & { finishedAt: string }) | null = null;
+
 // GET /scrape/status
 scrapeRouter.get('/status', (_req, res) => {
-  res.json({ scraping, lastResult });
+  res.json({ scraping, lastResult, refreshing, lastRefreshResult });
+});
+
+// POST /scrape/refresh
+scrapeRouter.post('/refresh', async (_req, res) => {
+  if (refreshing) return res.status(409).json({ error: 'Refresh already running' });
+  if (scraping) return res.status(409).json({ error: 'Scrape is running, wait for it to finish' });
+
+  refreshing = true;
+  res.json({ ok: true, message: 'Refresh started' });
+
+  (async () => {
+    try {
+      const result = await runRefreshPipeline();
+      lastRefreshResult = { ...result, finishedAt: new Date().toISOString() };
+    } catch (err) {
+      console.error('Refresh error:', (err as Error).message);
+    } finally {
+      refreshing = false;
+    }
+  })();
 });
 
 // POST /scrape

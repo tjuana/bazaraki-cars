@@ -169,6 +169,13 @@ async function saveListing(data: ReturnType<typeof normalizeListing>): Promise<{
         .update(schema.listings)
         .set({ price: data.price, scrapedAt: now })
         .where(eq(schema.listings.id, existing.id));
+      await db.insert(schema.priceHistory).values({
+        listingId: existing.id,
+        oldPrice: existing.price,
+        newPrice: data.price,
+        source: 'scrape',
+        changedAt: now,
+      });
       return { id: existing.id, priceChanged: true };
     }
     return { id: -1, priceChanged: false };
@@ -178,6 +185,18 @@ async function saveListing(data: ReturnType<typeof normalizeListing>): Promise<{
     .insert(schema.listings)
     .values({ ...data, scrapedAt: now })
     .returning({ id: schema.listings.id });
+
+  // Record initial price
+  if (data.price !== null && data.price !== undefined) {
+    await db.insert(schema.priceHistory).values({
+      listingId: result[0].id,
+      oldPrice: null,
+      newPrice: data.price,
+      source: 'scrape',
+      changedAt: now,
+    });
+  }
+
   return { id: result[0].id, priceChanged: false };
 }
 
