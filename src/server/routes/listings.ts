@@ -86,6 +86,7 @@ listingsRouter.get('/', async (req, res) => {
     price: schema.listings.price,
     year: schema.listings.year,
     mileage: schema.listings.mileage,
+    engineSize: schema.listings.engineSize,
     fuelType: schema.listings.fuelType,
     transmission: schema.listings.transmission,
     brand: schema.listings.brand,
@@ -95,6 +96,7 @@ listingsRouter.get('/', async (req, res) => {
     phoneNormalized: schema.listings.phoneNormalized,
     status: schema.listings.status,
     url: schema.listings.url,
+    imageUrls: schema.listings.imageUrls,
     scrapedAt: schema.listings.scrapedAt,
     riskScore: schema.analyses.riskScore,
     recommendation: schema.analyses.recommendation,
@@ -118,7 +120,10 @@ listingsRouter.get('/', async (req, res) => {
       .where(where),
   ]);
 
-  res.json({ rows, total: totalRows[0].total });
+  res.json({
+    rows: rows.map((r) => ({ ...r, imageUrls: JSON.parse(r.imageUrls ?? '[]') })),
+    total: totalRows[0].total,
+  });
 });
 
 // GET /listings/brands

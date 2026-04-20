@@ -1,20 +1,87 @@
 @import "tailwindcss";
 @variant dark (&:where(.dark, .dark *));
 
-@keyframes slide-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* ── Design tokens ─────────────────────────────────────────────── */
+:root {
+  --c-bg:         #f5f4f0;
+  --c-surface:    #ffffff;
+  --c-surface-hi: #eeece8;
+  --c-border:     #e0ddd6;
+  --c-text:       #1a1916;
+  --c-muted:      #898580;
+  --c-accent:     #d97706;
+  --c-green:      #16a34a;
+  --c-red:        #dc2626;
+  --c-blue:       #2563eb;
+  --c-purple:     #7c3aed;
 }
-.animate-slide-in { animation: slide-in 0.2s ease; }
 
+.dark {
+  --c-bg:         #0c0d11;
+  --c-surface:    #13141b;
+  --c-surface-hi: #1b1d27;
+  --c-border:     #22252f;
+  --c-text:       #dfe1ee;
+  --c-muted:      #5e6178;
+  --c-accent:     #f59e0b;
+  --c-green:      #34d399;
+  --c-red:        #f87171;
+  --c-blue:       #60a5fa;
+  --c-purple:     #a78bfa;
+}
+
+/* ── Base ────────────────────────────────────────────────────────── */
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: 'Outfit', system-ui, sans-serif;
+  background: radial-gradient(ellipse 100% 60% at 60% 0%, #ece5d8 0%, #f5f4f0 55%);
+  background-attachment: fixed;
+  color: var(--c-text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
-#root {
-  width: 100%;
-  min-height: 100svh;
+.dark body {
+  background: radial-gradient(ellipse 80% 50% at 15% 0%, #161b2e 0%, #0c0d11 60%);
+  background-attachment: fixed;
 }
+
+#root { width: 100%; min-height: 100svh; }
+
+/* ── Mono helper for data/prices ────────────────────────────────── */
+.mono {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  letter-spacing: -0.02em;
+}
+
+/* ── Animations ─────────────────────────────────────────────────── */
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-in { animation: slide-in 0.16s ease; }
+
+/* ── Semantic classes ───────────────────────────────────────────── */
+.card {
+  background-color: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  padding: 1.25rem;
+}
+
+.inset-field {
+  background-color: var(--c-surface-hi);
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+/* Scrollbar styling for dark mode */
+.dark ::-webkit-scrollbar { width: 6px; height: 6px; }
+.dark ::-webkit-scrollbar-track { background: var(--c-surface); }
+.dark ::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 3px; }
+.dark ::-webkit-scrollbar-thumb:hover { background: var(--c-muted); }

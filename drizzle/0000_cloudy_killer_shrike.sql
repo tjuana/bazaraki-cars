@@ -1,3 +1,4 @@
+
 CREATE TABLE `analyses` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`listing_id` integer NOT NULL,

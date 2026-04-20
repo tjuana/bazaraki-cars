@@ -39,6 +39,7 @@ export interface ListingRow {
   price: number | null;
   year: number | null;
   mileage: number | null;
+  engineSize: number | null;
   fuelType: string | null;
   transmission: string | null;
   brand: string | null;
@@ -48,6 +49,7 @@ export interface ListingRow {
   phoneNormalized: string | null;
   status: string;
   url: string;
+  imageUrls: string[];
   scrapedAt: string;
   riskScore: number | null;
   recommendation: string | null;
@@ -100,6 +102,9 @@ export interface DashboardData {
   byStatus: Record<string, number>;
   hotDeals: ListingRow[];
   recentlyAnalyzed: Array<{ id: number; title: string; status: string; riskScore: number | null; recommendation: string | null; analyzedAt: string | null }>;
+  riskDistribution: Record<number, number>;
+  priceChanges: Array<{ date: string; count: number }>;
+  expirations: Array<{ date: string; count: number }>;
 }
 
 export interface Config {

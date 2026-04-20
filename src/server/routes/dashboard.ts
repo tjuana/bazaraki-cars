@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { getDb, schema } from '../../db/client.js';
-import { eq, count, and, lte } from 'drizzle-orm';
+import { eq, count, and, lte, isNotNull, sql } from 'drizzle-orm';
 
 export const dashboardRouter = Router();
 
 dashboardRouter.get('/', async (_req, res) => {
   const db = getDb();
 
-  const [statusCounts, hotDeals, recentlyAnalyzed] = await Promise.all([
+  const [statusCounts, hotDeals, recentlyAnalyzed, riskRows, priceChanges, expirations] = await Promise.all([
     db.select({ status: schema.listings.status, count: count() })
       .from(schema.listings)
       .groupBy(schema.listings.status),
@@ -55,15 +55,43 @@ dashboardRouter.get('/', async (_req, res) => {
       .where(eq(schema.listings.status, 'analyzed'))
       .orderBy(schema.analyses.analyzedAt)
       .limit(5),
+
+    db.select({ score: schema.analyses.riskScore, count: count() })
+      .from(schema.analyses)
+      .where(isNotNull(schema.analyses.riskScore))
+      .groupBy(schema.analyses.riskScore),
+
+    db.select({
+      date: sql<string>`date(${schema.priceHistory.changedAt})`.as('date'),
+      count: count(),
+    })
+      .from(schema.priceHistory)
+      .where(sql`${schema.priceHistory.changedAt} >= date('now', '-30 days')`)
+      .groupBy(sql`date(${schema.priceHistory.changedAt})`),
+
+    db.select({
+      date: sql<string>`date(${schema.listings.scrapedAt})`.as('date'),
+      count: count(),
+    })
+      .from(schema.listings)
+      .where(and(
+        eq(schema.listings.status, 'expired'),
+        sql`${schema.listings.scrapedAt} >= date('now', '-30 days')`,
+      ))
+      .groupBy(sql`date(${schema.listings.scrapedAt})`),
   ]);
 
   const byStatus = Object.fromEntries(statusCounts.map((r) => [r.status, r.count]));
   const total = statusCounts.reduce((s, r) => s + r.count, 0);
+  const riskDistribution = Object.fromEntries(riskRows.map((r) => [r.score!, r.count]));
 
   res.json({
     total,
     byStatus,
     hotDeals,
     recentlyAnalyzed,
+    riskDistribution,
+    priceChanges,
+    expirations,
   });
 });
